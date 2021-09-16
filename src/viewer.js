@@ -23,7 +23,9 @@ import {
 } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 // import { RoughnessMipmapper } from 'three/examples/jsm/utils/RoughnessMipmapper.js';
@@ -35,7 +37,7 @@ import { createBackground } from '../lib/three-vignette.js';
 
 const DEFAULT_CAMERA = '[default]';
 
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const IS_IOS = isIOS();
 
 // glTF texture types. `envMap` is deliberately omitted, as it's used internally
 // by the loader but not part of the glTF format.
@@ -218,12 +220,17 @@ export class Viewer {
 
       });
 
-      const loader = new GLTFLoader(manager);
-      loader.setCrossOrigin('anonymous');
-
-      const dracoLoader = new DRACOLoader();
-      dracoLoader.setDecoderPath( 'assets/draco/' );
-      loader.setDRACOLoader( dracoLoader );
+      const loader = new GLTFLoader( manager )
+        .setCrossOrigin('anonymous')
+        .setDRACOLoader(
+          new DRACOLoader( manager ).setDecoderPath( 'assets/wasm/' )
+        )
+        .setKTX2Loader(
+          new KTX2Loader( manager )
+            .setTranscoderPath( 'assets/wasm/' )
+            .detectSupport( this.renderer )
+        )
+        .setMeshoptDecoder( MeshoptDecoder );
 
       const blobURLs = [];
 
@@ -737,4 +744,18 @@ function traverseMaterials (object, callback) {
       : [node.material];
     materials.forEach(callback);
   });
+}
+
+// https://stackoverflow.com/a/9039885/1314762
+function isIOS() {
+  return [
+    'iPad Simulator',
+    'iPhone Simulator',
+    'iPod Simulator',
+    'iPad',
+    'iPhone',
+    'iPod'
+  ].includes(navigator.platform)
+  // iPad on iOS 13 detection
+  || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
 }
